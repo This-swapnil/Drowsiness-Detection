@@ -12,24 +12,14 @@ from streamlit_webrtc import (
     RTCConfiguration,
 )
 import av
-import base64
 
-# pygame.mixer.init()
-# pygame.mixer.music.load("warning.mp3")
+pygame.mixer.init()
+pygame.mixer.music.load("warning.mp3")
 alarm_on = False
 
 
-def play_audio(file_path):
-    """Plays an MP3 file in the user's browser."""
-    with open(file_path, "rb") as f:
-        data = f.read()
-        b64 = base64.b64encode(data).decode()
-        md = f"""
-        <audio autoplay loop>
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-        </audio>
-        """
-        st.markdown(md, unsafe_allow_html=True)
+def play_alarm():
+    pygame.mixer.music.play(-1)
 
 
 def dispaly_detected_frames(confidence, model, st_frame, image):
@@ -79,7 +69,7 @@ def dispaly_detected_frames(confidence, model, st_frame, image):
     if detected_state:
         if not alarm_on:
             alarm_on = True
-            play_audio("warning.mp3")
+            threading.Thread(target=play_alarm, daemon=True).start()
 
         # Choose message
         if detected_state == "drowsy":
@@ -115,8 +105,8 @@ def dispaly_detected_frames(confidence, model, st_frame, image):
     else:
         # Stop alarm and clear banner when normal
         if alarm_on:
+            pygame.mixer.music.stop()
             alarm_on = False
-            st.markdown("<audio></audio>", unsafe_allow_html=True)
 
         # Keep height reserved so frame doesn’t move up
         st.session_state.alert_placeholder.markdown(
@@ -197,7 +187,7 @@ def infer_uploaded_video(confidence, model):
                     st.write(f"Error loading video: {str(e)}")
 
 
-def infer_webcam_local(confidence, model):
+def infer_webcam(confidence, model):
     try:
         flag = st.button(label="Stop Running")
         vid_cap = cv2.VideoCapture(0)
@@ -214,134 +204,134 @@ def infer_webcam_local(confidence, model):
         st.write(f"Error loading webcam video: {str(e)}")
 
 
-RTC_CONFIGURATION = RTCConfiguration(
-    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)
+# RTC_CONFIGURATION = RTCConfiguration(
+#     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+# )
 
 
-def infer_webcam(confidence, model):
-    # Two Streamlit columns: left = raw, right = processed
-    col1, col2 = st.columns(2)
-    raw_placeholder = col1.empty()
-    processed_placeholder = col2.empty()
+# def infer_webcam_server(confidence, model):
+#     # Two Streamlit columns: left = raw, right = processed
+#     col1, col2 = st.columns(2)
+#     raw_placeholder = col1.empty()
+#     processed_placeholder = col2.empty()
 
-    frame_queue = queue.Queue(maxsize=1)
+#     frame_queue = queue.Queue(maxsize=1)
 
-    def video_frame_callback(frame: av.VideoFrame):
-        """Receives webcam frame and pushes it to queue."""
-        img = frame.to_ndarray(format="bgr24")
-        if not frame_queue.full():
-            frame_queue.put(img)
-        # returning None hides the default webrtc preview
-        return None
+#     def video_frame_callback(frame: av.VideoFrame):
+#         """Receives webcam frame and pushes it to queue."""
+#         img = frame.to_ndarray(format="bgr24")
+#         if not frame_queue.full():
+#             frame_queue.put(img)
+#         # returning None hides the default webrtc preview
+#         return None
 
-    # Start WebRTC stream (no default preview)
-    webrtc_streamer(
-        key="drowsiness_detection",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTC_CONFIGURATION,
-        video_frame_callback=video_frame_callback,
-        media_stream_constraints={"video": True, "audio": False},
-        video_html_attrs={"controls": False, "autoPlay": False},  # 🚫 hides top preview
-    )
+#     # Start WebRTC stream (no default preview)
+#     webrtc_streamer(
+#         key="drowsiness_detection",
+#         mode=WebRtcMode.SENDRECV,
+#         rtc_configuration=RTC_CONFIGURATION,
+#         video_frame_callback=video_frame_callback,
+#         media_stream_constraints={"video": True, "audio": False},
+#         video_html_attrs={"controls": False, "autoPlay": False},  # 🚫 hides top preview
+#     )
 
-    st_frame = processed_placeholder  # for detection output
+#     st_frame = processed_placeholder  # for detection output
 
-    while True:
-        try:
-            frame = frame_queue.get(timeout=1)
+#     while True:
+#         try:
+#             frame = frame_queue.get(timeout=1)
 
-            # Show raw webcam feed (left)
-            raw_placeholder.image(
-                frame,
-                caption="📸 Raw Webcam Feed",
-                channels="BGR",
-                width=350,
-            )
+#             # Show raw webcam feed (left)
+#             raw_placeholder.image(
+#                 frame,
+#                 caption="📸 Raw Webcam Feed",
+#                 channels="BGR",
+#                 width=350,
+#             )
 
-            # Process + show detected frame (right)
-            dispaly_detected_frames(confidence, model, st_frame, frame)
+#             # Process + show detected frame (right)
+#             dispaly_detected_frames(confidence, model, st_frame, frame)
 
-        except queue.Empty:
-            break
+#         except queue.Empty:
+#             break
 
 
-def infer_webcam_g(confidence, model):
-    st.markdown("### 🎥 Live Drowsiness Detection (Browser-based)")
+# def infer_webcam_g(confidence, model):
+#     st.markdown("### 🎥 Live Drowsiness Detection (Browser-based)")
 
-    # CSS to enforce horizontal layout
-    st.markdown(
-        """
-        <style>
-        .video-container {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-around;
-            align-items: flex-start;
-            gap: 30px;
-            width: 100%;
-        }
-        .video-box {
-            flex: 1;
-            text-align: center;
-        }
-        img {
-            border-radius: 12px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+#     # CSS to enforce horizontal layout
+#     st.markdown(
+#         """
+#         <style>
+#         .video-container {
+#             display: flex;
+#             flex-direction: row;
+#             justify-content: space-around;
+#             align-items: flex-start;
+#             gap: 30px;
+#             width: 100%;
+#         }
+#         .video-box {
+#             flex: 1;
+#             text-align: center;
+#         }
+#         img {
+#             border-radius: 12px;
+#             box-shadow: 0 0 10px rgba(0,0,0,0.2);
+#         }
+#         </style>
+#         """,
+#         unsafe_allow_html=True,
+#     )
 
-    # Create placeholders inside a fixed horizontal div
-    raw_placeholder = st.empty()
-    processed_placeholder = st.empty()
+#     # Create placeholders inside a fixed horizontal div
+#     raw_placeholder = st.empty()
+#     processed_placeholder = st.empty()
 
-    # Render custom layout container
-    st.markdown(
-        """
-        <div class="video-container">
-            <div class="video-box" id="raw"></div>
-            <div class="video-box" id="processed"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+#     # Render custom layout container
+#     st.markdown(
+#         """
+#         <div class="video-container">
+#             <div class="video-box" id="raw"></div>
+#             <div class="video-box" id="processed"></div>
+#         </div>
+#         """,
+#         unsafe_allow_html=True,
+#     )
 
-    frame_queue = queue.Queue(maxsize=1)
+#     frame_queue = queue.Queue(maxsize=1)
 
-    def video_frame_callback(frame: av.VideoFrame):
-        img = frame.to_ndarray(format="bgr24")
-        if not frame_queue.full():
-            frame_queue.put(img)
-        # hide default preview
-        return None
+#     def video_frame_callback(frame: av.VideoFrame):
+#         img = frame.to_ndarray(format="bgr24")
+#         if not frame_queue.full():
+#             frame_queue.put(img)
+#         # hide default preview
+#         return None
 
-    webrtc_streamer(
-        key="drowsiness_detection",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration=RTC_CONFIGURATION,
-        video_frame_callback=video_frame_callback,
-        media_stream_constraints={"video": True, "audio": False},
-        video_html_attrs={"controls": False, "autoPlay": False},
-    )
+#     webrtc_streamer(
+#         key="drowsiness_detection",
+#         mode=WebRtcMode.SENDRECV,
+#         rtc_configuration=RTC_CONFIGURATION,
+#         video_frame_callback=video_frame_callback,
+#         media_stream_constraints={"video": True, "audio": False},
+#         video_html_attrs={"controls": False, "autoPlay": False},
+#     )
 
-    while True:
-        try:
-            frame = frame_queue.get(timeout=1)
+#     while True:
+#         try:
+#             frame = frame_queue.get(timeout=1)
 
-            # Render both views side-by-side in same HTML row
-            col1, col2 = st.columns(2)
-            with col1:
-                raw_placeholder.image(
-                    frame,
-                    caption="📸 Raw Webcam Feed",
-                    channels="BGR",
-                    width="content",
-                )
-            with col2:
-                dispaly_detected_frames(confidence, model, processed_placeholder, frame)
+#             # Render both views side-by-side in same HTML row
+#             col1, col2 = st.columns(2)
+#             with col1:
+#                 raw_placeholder.image(
+#                     frame,
+#                     caption="📸 Raw Webcam Feed",
+#                     channels="BGR",
+#                     width="content",
+#                 )
+#             with col2:
+#                 dispaly_detected_frames(confidence, model, processed_placeholder, frame)
 
-        except queue.Empty:
-            break
+#         except queue.Empty:
+#             break
