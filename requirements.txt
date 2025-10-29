@@ -1,1 +1,16 @@
+streamlit
+ultralytics
+pandas
+numpy 
+opencv-python
+Pillow
+pygame
+streamlit-webrtc
+av
+
+
+
+
+
+
 -e .
