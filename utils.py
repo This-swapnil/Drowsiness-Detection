@@ -12,16 +12,24 @@ from streamlit_webrtc import (
     RTCConfiguration,
 )
 import av
+import base64
 
-pygame.mixer.init()
-pygame.mixer.music.load(
-    "warning.mp3"
-)  # Make sure alarm.mp3 exists in your project folder
+# pygame.mixer.init()
+# pygame.mixer.music.load("warning.mp3")
 alarm_on = False
 
 
-def play_alarm():
-    pygame.mixer.music.play(-1)
+def play_audio(file_path):
+    """Plays an MP3 file in the user's browser."""
+    with open(file_path, "rb") as f:
+        data = f.read()
+        b64 = base64.b64encode(data).decode()
+        md = f"""
+        <audio autoplay loop>
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        </audio>
+        """
+        st.markdown(md, unsafe_allow_html=True)
 
 
 def dispaly_detected_frames(confidence, model, st_frame, image):
@@ -71,7 +79,7 @@ def dispaly_detected_frames(confidence, model, st_frame, image):
     if detected_state:
         if not alarm_on:
             alarm_on = True
-            threading.Thread(target=play_alarm, daemon=True).start()
+            play_audio("warning.mp3")
 
         # Choose message
         if detected_state == "drowsy":
@@ -107,8 +115,8 @@ def dispaly_detected_frames(confidence, model, st_frame, image):
     else:
         # Stop alarm and clear banner when normal
         if alarm_on:
-            pygame.mixer.music.stop()
             alarm_on = False
+            st.markdown("<audio></audio>", unsafe_allow_html=True)
 
         # Keep height reserved so frame doesn’t move up
         st.session_state.alert_placeholder.markdown(
